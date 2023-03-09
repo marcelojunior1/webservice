@@ -1,7 +1,9 @@
 import ReactDOM from 'react-dom/client'
 import App from './App'
-import notes from './services/notes'
+import dbPersons from './dbPersons'
 
-notes.getAll().then(data => {
-  ReactDOM.createRoot(document.getElementById('root')).render(<App data={data} />)
+dbPersons.getAll().then(data => {
+  ReactDOM.createRoot(document.getElementById('root')).render(<App data={
+    data.map((obj) => ({...obj, number: [obj.number]}))
+  } />)
 })
