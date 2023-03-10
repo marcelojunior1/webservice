@@ -15,10 +15,19 @@ const Person = require('./models/person')
 /* ----------------------------------------------------------------------------------- */
 
 const errorHandler = (error, request, response, next) => {
-  //console.error(error.message)
-  if (error.name === 'CastError') {
-    return response.status(400).send('<h1 align=center> ERROR 400 </h1>')
-  } 
+  console.error("APP ERRO", error.message)
+
+  switch(error.name)
+  {
+    case 'CastError':
+      return response.status(400).send('<h1 align=center> ERROR 400 </h1>')
+      break;
+
+    case 'ValidationError':
+      return response.status(400).json({ error: error.message })
+      break;
+  }
+
   next(error)
 }
 app.use(errorHandler)
@@ -32,10 +41,10 @@ app.listen(PORT, () => {
 
 app.get('/', (req, res) => {res.send('<h1>Olá! </h1>')})
   
-app.get('/api/persons', (req, res) => {
-  Person.find({}).then(persons=> {
-    res.json(persons)
-  })
+app.get('/api/persons', (req, res, next) => {
+  Person.find({})
+  .then(persons=> {res.json(persons)})
+  .catch(error => errorHandler(error, req, res, next))
 })
 
 app.get('/api/persons/:id', (req, res, next) => {
@@ -54,30 +63,21 @@ app.delete('/api/persons/:id', (req, res, next) => {
 })
 
 app.put ('/api/persons/:id', (req, res, next) => {
-  const id = Number(req.params.id)
+  const {name, number} = req.body
 
-  const upPerson = {
-    name: req.body.name,
-    number: req.body.number
-  }
-
-  Person.findByIdAndUpdate(req.params.id, upPerson, { new: true })
-    .then(updatedPerson => {
-      res.json(updatedPerson)
-    })
-    .catch(error => next(error))
+  Person.findByIdAndUpdate(
+    req.params.id, 
+    {name, number}, 
+    { new: true, runValidators: true, context: 'query' }
+  )
+    .then(updatedPerson => { res.json(updatedPerson)})
+    .catch(error => errorHandler(error, req, res, next))
 
   return req.body
 })
 
-app.post('/api/persons', (req, res) => {
+app.post('/api/persons', (req, res, next) => {
   const body = req.body
-
-  if (!body.name || !body.number) {
-    return res.status(400).json({ 
-      error: 'content missing' 
-    })
-  }
 
   const person = new Person ({
     name: body.name,
@@ -85,6 +85,6 @@ app.post('/api/persons', (req, res) => {
   })
   
   person.save().then(result => {
-    console.log('person saved!')
-  })
+    //console.log('person saved!')
+  }).catch(error => errorHandler(error, req, res, next))
 })
